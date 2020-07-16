@@ -1,14 +1,33 @@
 <ion-header>
   <ion-navbar>
-    <ion-title>
-      Ionic Blank
-    </ion-title>
+    <ion-title>home</ion-title>
   </ion-navbar>
 </ion-header>
 
 <ion-content padding>
-  The world is your oyster.
-  <p>
-    If you get lost, the <a href="http://ionicframework.com/docs/v3">docs</a> will be your guide.
-  </p>
+  <input
+    id="input-file"
+    name="input-file"
+    type="file"
+    (change)="onFileSelect($event)"
+    #inputFile
+  />
+  <ion-list *ngIf="files && files.length > 0">
+    <ion-list-header>
+      Files
+    </ion-list-header>
+    <ion-item *ngFor="let file of files, let i = index">
+      <div
+        class="file-thumbnail-container"
+        item-start
+        *ngIf="file.data.indexOf('image/') !== -1"
+      >
+        <img [src]="sanitizeURL(file.data)" />
+      </div>
+      <span>{{ i + 1 }} - {{ file.name }}</span>
+      <button ion-button color="dark" clear icon-only item-end (click)="onFileDelete(i)">
+        <ion-icon name="trash"></ion-icon>
+      </button>
+    </ion-item>
+  </ion-list>
 </ion-content>
