@@ -1,8 +1,14 @@
-import { Component } from "@angular/core";
+import { Component, ViewChild, ElementRef } from "@angular/core";
 import { DomSanitizer } from "@angular/platform-browser";
 import Compressor from "compressorjs";
 import { IonicPage, NavController, NavParams } from "ionic-angular";
 import { LoadingProvider } from "../../providers/loading/loading";
+
+export interface FileDocument {
+  name: string;
+  data: string;
+  size: number;
+}
 
 @IonicPage()
 @Component({
@@ -10,7 +16,10 @@ import { LoadingProvider } from "../../providers/loading/loading";
   templateUrl: "home.html",
 })
 export class HomePage {
-  protected files: { name: string; data: string }[] = [];
+  protected files: { name: string; data: string; size: number }[] = [];
+
+  @ViewChild("inputFile", { read: ElementRef })
+  private inputFileEl: ElementRef;
 
   constructor(
     public navParams: NavParams,
@@ -18,6 +27,11 @@ export class HomePage {
     private domSanitizer: DomSanitizer,
     private loadingProvider: LoadingProvider
   ) {}
+
+  onFileAdd() {
+    const element = <HTMLInputElement>this.inputFileEl.nativeElement;
+    element.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  }
 
   onFileDelete(index: number) {
     this.files.splice(index);
@@ -30,14 +44,27 @@ export class HomePage {
 
     this.loadingProvider.show("Carregando arquivo...");
 
+    let compressedFile: Blob;
+
     this.compressFile(file)
-      .then((compressedFile) => this.readFileAsDataURL(compressedFile))
+      .then((file) => {
+        compressedFile = file;
+        return this.readFileAsDataURL(file);
+      })
       .then((dataURL) => {
-        console.log({ dataURL });
-        this.files.unshift({ name: file.name, data: dataURL });
+        this.files.unshift({
+          name: file.name,
+          data: dataURL,
+          size: compressedFile.size,
+        });
+
         this.loadingProvider.dismiss();
       })
       .catch(() => this.loadingProvider.dismiss());
+  }
+
+  isImage(file: FileDocument) {
+    return file.data.indexOf("image/") !== -1;
   }
 
   sanitizeURL(url: string) {

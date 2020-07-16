@@ -1,4 +1,8 @@
 page-home {
+  ion-list {
+    margin-top: 16px !important;
+  }
+
   div.file-thumbnail-container {
     height: 50px;
     width: 50px;
@@ -9,5 +13,14 @@ page-home {
       object-fit: cover;
       object-position: center;
     }
+  }
+
+  div.file-title {
+    word-wrap: break-word;
+    white-space: normal;
+  }
+
+  div.file-size {
+    color: rgba($color: #000000, $alpha: 0.6)
   }
 }
