@@ -1,14 +1,11 @@
-import { Component, ViewChild, ElementRef } from "@angular/core";
+import { Component, ElementRef, ViewChild } from "@angular/core";
 import { DomSanitizer } from "@angular/platform-browser";
-import Compressor from "compressorjs";
 import { IonicPage, NavController, NavParams } from "ionic-angular";
+import { FileProvider } from "../../providers/file/file";
+import { FileDocument } from "../../providers/file/file.model";
+import { ImageProvider } from "../../providers/image/image";
+import { Image } from "../../providers/image/image.model";
 import { LoadingProvider } from "../../providers/loading/loading";
-
-export interface FileDocument {
-  name: string;
-  data: string;
-  size: number;
-}
 
 @IonicPage()
 @Component({
@@ -25,8 +22,26 @@ export class HomePage {
     public navParams: NavParams,
     public navCtrl: NavController,
     private domSanitizer: DomSanitizer,
+    private fileProvider: FileProvider,
+    private imageProvider: ImageProvider,
     private loadingProvider: LoadingProvider
   ) {}
+
+  onImageAdd() {
+    this.imageProvider
+      .getImageFromGallery()
+      .then((image: Image) => {
+        const file: FileDocument = {
+          name: image.name,
+          data: `data:image/jpeg;base64,${image.data}`,
+          size: image.data.length,
+        };
+        this.files.unshift(file);
+        return file;
+      })
+      .then(file => this.fileProvider.readDataURLAsBlob(file.data))
+      .then(fileBlob => console.log("fileBlob", fileBlob));
+  }
 
   onFileAdd() {
     const element = <HTMLInputElement>this.inputFileEl.nativeElement;
@@ -34,7 +49,7 @@ export class HomePage {
   }
 
   onFileDelete(index: number) {
-    this.files.splice(index);
+    this.files.splice(index, 1);
   }
 
   onFileSelect(event: any) {
@@ -44,20 +59,23 @@ export class HomePage {
 
     this.loadingProvider.show("Carregando arquivo...");
 
-    let compressedFile: Blob;
+    let fileSize: number;
 
-    this.compressFile(file)
-      .then((file) => {
-        compressedFile = file;
-        return this.readFileAsDataURL(file);
-      })
-      .then((dataURL) => {
+    this.fileProvider
+      .compressFile(file)
+      .then(
+        compressedFile => {
+          fileSize = compressedFile.size;
+          return this.fileProvider.readFileAsDataURL(compressedFile);
+        },
+        () => this.fileProvider.readFileAsDataURL(file)
+      )
+      .then(fileDataURL => {
         this.files.unshift({
           name: file.name,
-          data: dataURL,
-          size: compressedFile.size,
+          data: fileDataURL,
+          size: fileSize,
         });
-
         this.loadingProvider.dismiss();
       })
       .catch(() => this.loadingProvider.dismiss());
@@ -69,32 +87,5 @@ export class HomePage {
 
   sanitizeURL(url: string) {
     return this.domSanitizer.bypassSecurityTrustUrl(url);
-  }
-
-  private compressFile(file: File | Blob): Promise<Blob> {
-    return new Promise((resolve, reject) => {
-      new Compressor(file, {
-        quality: 0.75,
-        maxHeight: 1200,
-        minHeight: 1200,
-        success: (compressedFile: Blob) => resolve(compressedFile),
-        error: (error) => reject(error),
-      });
-    });
-  }
-
-  private readFileAsDataURL(file: File | Blob): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const fileReader = new FileReader();
-      fileReader.onloadend = () => {
-        const base64 = fileReader.result;
-
-        if (base64) {
-          resolve(base64.toString());
-        }
-      };
-      fileReader.onerror = (error) => reject(error);
-      fileReader.readAsDataURL(file);
-    });
   }
 }
