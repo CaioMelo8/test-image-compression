@@ -1,5 +1,6 @@
 import { Injectable } from "@angular/core";
 import Compressor from "compressorjs";
+import { addFileNameExtension } from "./file.utils";
 
 @Injectable()
 export class FileProvider {
@@ -20,20 +21,34 @@ export class FileProvider {
     });
   }
 
-  public async readDataURLAsBlob(data: string) {
-    const response = await fetch(data);
-    return await response.blob();
+  public readDataURLAsBlob(dataURL: string): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      fetch(dataURL)
+        .then(response => response.blob())
+        .then(resolve)
+        .catch(error => reject(error));
+    });
   }
 
-  public compressFile(file: File | Blob): Promise<Blob> {
-    return new Promise((resolve, reject) => {
-      new Compressor(file, {
-        quality: 0.75,
-        maxHeight: 1200,
-        minHeight: 1200,
-        success: (compressedFile: Blob) => resolve(compressedFile),
-        error: error => reject(error),
-      });
+  public compressImage(image: File): Promise<File> {
+    return new Promise(resolve => {
+      const compressionOptions: Compressor.Options = {
+        strict: true,
+        quality: 0.7,
+        maxHeight: 1800,
+        maxWidth: 1800,
+        mimeType: "image/jpeg",
+        success: (imageBlob: Blob) => {
+          const imageName = addFileNameExtension(image.name, "jpeg");
+          const imageProperties: FilePropertyBag = {
+            type: imageBlob.type,
+            lastModified: new Date().getTime(),
+          };
+          resolve(new File([imageBlob], imageName, imageProperties));
+        },
+        error: () => resolve(image),
+      };
+      new Compressor(image, compressionOptions);
     });
   }
 }

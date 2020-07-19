@@ -1,8 +1,9 @@
 import { Component, ElementRef, ViewChild } from "@angular/core";
 import { DomSanitizer } from "@angular/platform-browser";
-import { IonicPage, NavController, NavParams } from "ionic-angular";
+import { AlertController, IonicPage, NavController, NavParams } from "ionic-angular";
 import { FileProvider } from "../../providers/file/file";
 import { FileDocument } from "../../providers/file/file.model";
+import { findUniqueFileName, isImageFile } from "../../providers/file/file.utils";
 import { ImageProvider } from "../../providers/image/image";
 import { Image } from "../../providers/image/image.model";
 import { LoadingProvider } from "../../providers/loading/loading";
@@ -21,6 +22,7 @@ export class HomePage {
   constructor(
     public navParams: NavParams,
     public navCtrl: NavController,
+    private alertCtrl: AlertController,
     private domSanitizer: DomSanitizer,
     private fileProvider: FileProvider,
     private imageProvider: ImageProvider,
@@ -59,33 +61,56 @@ export class HomePage {
 
     this.loadingProvider.show("Carregando arquivo...");
 
-    let fileSize: number;
-
-    this.fileProvider
-      .compressFile(file)
-      .then(
-        compressedFile => {
-          fileSize = compressedFile.size;
-          return this.fileProvider.readFileAsDataURL(compressedFile);
-        },
-        () => this.fileProvider.readFileAsDataURL(file)
-      )
-      .then(fileDataURL => {
-        this.files.unshift({
-          name: file.name,
-          data: fileDataURL,
-          size: fileSize,
+    if (file.type.startsWith("image/")) {
+      this.fileProvider
+        .compressImage(file)
+        .then(compressedFile => this.readFile(compressedFile))
+        .then(fileDocument => {
+          this.files.unshift(fileDocument);
+          this.loadingProvider.dismiss();
+        })
+        .catch(() => {
+          this.showFileError();
+          this.loadingProvider.dismiss();
         });
-        this.loadingProvider.dismiss();
-      })
-      .catch(() => this.loadingProvider.dismiss());
+    } else {
+      this.readFile(file)
+        .then(fileDocument => {
+          this.files.unshift(fileDocument);
+          this.loadingProvider.dismiss();
+        })
+        .catch(() => {
+          this.showFileError();
+          this.loadingProvider.dismiss();
+        });
+    }
   }
 
   isImage(file: FileDocument) {
-    return file.data.indexOf("image/") !== -1;
+    return isImageFile({ dataURL: file.data });
   }
 
   sanitizeURL(url: string) {
     return this.domSanitizer.bypassSecurityTrustUrl(url);
+  }
+
+  private readFile(file: File): Promise<FileDocument> {
+    return new Promise((resolve, reject) => {
+      this.fileProvider
+        .readFileAsDataURL(file)
+        .then(dataURL => {
+          const name = findUniqueFileName(this.files, file.name);
+          resolve({ name: name, data: dataURL, size: file.size });
+        })
+        .catch(reject);
+    });
+  }
+
+  private showFileError() {
+    const message = "Ocorreu um erro ao carregar o arquivo.";
+    const buttons = [{ text: "OK" }];
+    this.alertCtrl
+      .create({ message: message, buttons: buttons, enableBackdropDismiss: false })
+      .present();
   }
 }

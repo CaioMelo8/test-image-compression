@@ -21,7 +21,7 @@
   />
   <ion-list *ngIf="files && files.length > 0">
     <h4 no-margin>Files</h4>
-    <ion-item *ngFor="let file of files, let i = index">
+    <ion-item *ngFor="let file of files, let i = index" no-padding>
       <div class="file-thumbnail-container" item-start *ngIf="isImage(file)">
         <img [src]="sanitizeURL(file.data)" />
       </div>
@@ -29,14 +29,7 @@
         {{ i + 1 }} - {{ file.name }}
       </div>
       <div class="file-size">{{ file.size | filesize }}</div>
-      <button
-        ion-button
-        color="dark"
-        clear
-        icon-only
-        item-end
-        (click)="onFileDelete(i)"
-      >
+      <button ion-button color="dark" clear icon-only item-end (click)="onFileDelete(i)">
         <ion-icon name="trash"></ion-icon>
       </button>
     </ion-item>
