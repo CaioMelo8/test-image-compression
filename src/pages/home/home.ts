@@ -3,10 +3,11 @@ import { DomSanitizer } from "@angular/platform-browser";
 import { AlertController, IonicPage, NavController, NavParams } from "ionic-angular";
 import { FileProvider } from "../../providers/file/file";
 import { FileDocument } from "../../providers/file/file.model";
-import { findUniqueFileName, isImageFile } from "../../providers/file/file.utils";
+import { findUniqueFileName, isFileType } from "../../providers/file/file.utils";
 import { ImageProvider } from "../../providers/image/image";
-import { Image } from "../../providers/image/image.model";
+import { Image, ImageType } from "../../providers/image/image.model";
 import { LoadingProvider } from "../../providers/loading/loading";
+import { ZipProvider } from "../../providers/zip/zip";
 
 @IonicPage()
 @Component({
@@ -14,7 +15,8 @@ import { LoadingProvider } from "../../providers/loading/loading";
   templateUrl: "home.html",
 })
 export class HomePage {
-  protected files: { name: string; data: string; size: number }[] = [];
+  protected files: FileDocument[] = [];
+  protected zipFile: string;
 
   @ViewChild("inputFile", { read: ElementRef })
   private inputFileEl: ElementRef;
@@ -26,7 +28,8 @@ export class HomePage {
     private domSanitizer: DomSanitizer,
     private fileProvider: FileProvider,
     private imageProvider: ImageProvider,
-    private loadingProvider: LoadingProvider
+    private loadingProvider: LoadingProvider,
+    private zipProvider: ZipProvider
   ) {}
 
   onImageAdd() {
@@ -41,8 +44,7 @@ export class HomePage {
         this.files.unshift(file);
         return file;
       })
-      .then(file => this.fileProvider.readDataURLAsBlob(file.data))
-      .then(fileBlob => console.log("fileBlob", fileBlob));
+      .then(file => this.fileProvider.readDataURLAsBlob(file.data));
   }
 
   onFileAdd() {
@@ -59,35 +61,42 @@ export class HomePage {
     const file = input.files[0];
     input.value = "";
 
-    this.loadingProvider.show("Carregando arquivo...");
+    this.loadingProvider.show("Carregando arquivo, por favor espere...");
 
-    if (file.type.startsWith("image/")) {
-      this.fileProvider
-        .compressImage(file)
-        .then(compressedFile => this.readFile(compressedFile))
-        .then(fileDocument => {
-          this.files.unshift(fileDocument);
-          this.loadingProvider.dismiss();
-        })
-        .catch(() => {
-          this.showFileError();
-          this.loadingProvider.dismiss();
-        });
+    let promise: Promise<FileDocument>;
+
+    if (isFileType({ name: file.name }, { extension: "heic" })) {
+      promise = this.readHEICPictureFile(file);
+    } else if (isFileType({ type: file.type }, { type: "image/" })) {
+      promise = this.readPictureFile(file);
     } else {
-      this.readFile(file)
-        .then(fileDocument => {
-          this.files.unshift(fileDocument);
-          this.loadingProvider.dismiss();
-        })
-        .catch(() => {
-          this.showFileError();
-          this.loadingProvider.dismiss();
-        });
+      promise = this.readFile(file);
     }
+
+    promise
+      .then(file => {
+        this.files.unshift(file);
+        this.loadingProvider.dismiss();
+      })
+      .catch(() => {
+        this.showFileError();
+        this.loadingProvider.dismiss();
+      });
+  }
+
+  onGenerateZip() {
+    this.loadingProvider.show("Comprimindo arquivos, por favor espere...");
+
+    this.zipProvider
+      .zipFiles(this.files, { type: "base64", base64: true })
+      .then((zipFile: string) => {
+        this.zipFile = zipFile;
+        this.loadingProvider.dismiss();
+      });
   }
 
   isImage(file: FileDocument) {
-    return isImageFile({ dataURL: file.data });
+    return isFileType({ data: file.data }, { type: "image/" });
   }
 
   sanitizeURL(url: string) {
@@ -100,8 +109,28 @@ export class HomePage {
         .readFileAsDataURL(file)
         .then(dataURL => {
           const name = findUniqueFileName(this.files, file.name);
-          resolve({ name: name, data: dataURL, size: file.size });
+          resolve({ name: name, data: dataURL, type: file.type, size: file.size });
         })
+        .catch(reject);
+    });
+  }
+
+  private readPictureFile(file: File): Promise<FileDocument> {
+    return new Promise((resolve, reject) => {
+      this.imageProvider
+        .compressImage(file)
+        .then(compressedFile => this.readFile(compressedFile))
+        .then(resolve)
+        .catch(reject);
+    });
+  }
+
+  private readHEICPictureFile(file: File): Promise<FileDocument> {
+    return new Promise((resolve, reject) => {
+      this.imageProvider
+        .convertImage(file, ImageType.JPG)
+        .then(convertedFile => this.readPictureFile(convertedFile))
+        .then(resolve)
         .catch(reject);
     });
   }

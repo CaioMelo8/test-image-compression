@@ -9,6 +9,7 @@ import { HomePageModule } from "../pages/home/home.module";
 import { FileProvider } from "../providers/file/file";
 import { ImageProvider } from "../providers/image/image";
 import { LoadingProvider } from "../providers/loading/loading";
+import { ZipProvider } from "../providers/zip/zip";
 import { MyApp } from "./app.component";
 
 @NgModule({
@@ -24,6 +25,7 @@ import { MyApp } from "./app.component";
     FileProvider,
     ImageProvider,
     LoadingProvider,
+    ZipProvider,
   ],
 })
 export class AppModule {}
