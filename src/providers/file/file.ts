@@ -19,6 +19,21 @@ export class FileProvider {
     });
   }
 
+  public readFileAsArrayBuffer(file: File | Blob): Promise<string | ArrayBuffer> {
+    return new Promise((resolve, reject) => {
+      const fileReader = new FileReader();
+      fileReader.onloadend = () => {
+        const arrayBuffer = fileReader.result;
+
+        if (arrayBuffer) {
+          resolve(arrayBuffer);
+        }
+      };
+      fileReader.onerror = error => reject(error);
+      fileReader.readAsArrayBuffer(file);
+    });
+  }
+
   public readDataURLAsBlob(dataURL: string): Promise<Blob> {
     return new Promise((resolve, reject) => {
       fetch(dataURL)

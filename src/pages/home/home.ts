@@ -128,7 +128,7 @@ export class HomePage {
   private readHEICPictureFile(file: File): Promise<FileDocument> {
     return new Promise((resolve, reject) => {
       this.imageProvider
-        .convertImage(file, ImageType.JPG)
+        .convertHEICImage(file, ImageType.JPG)
         .then(convertedFile => this.readPictureFile(convertedFile))
         .then(resolve)
         .catch(reject);

@@ -35,12 +35,12 @@
     </ion-item>
   </ion-list>
 </ion-content>
-<ion-footer padding>
+<ion-footer>
   <ion-item no-padding *ngIf="zipFile">
     <div>ZIP Generated</div>
     <div>Size: {{ zipFile.length | filesize }}</div>
   </ion-item>
-  <button ion-button block (click)="onGenerateZip()">
+  <button margin ion-button block (click)="onGenerateZip()">
     GENERATE ZIP
   </button>
 </ion-footer>
